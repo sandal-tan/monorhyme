@@ -34,6 +34,25 @@ Using 6.0.1 for pytest
 /.../monorhyme/pyproject.toml (^7.1.2 -> 7.0.1)
 ```
 
+## Why
+
+I use `mr` to get all of my depenecies pinned to the most recent possible versions:
+```shell
+# Update everything to latest
+% for dep in $(mr ls); do
+      mr set $dep latest
+  done
+
+# Lock all of the projects. If this step fails, I use `mr set` to set the pins for items taht are causing the lock 
+# to fail. Once all version constraints are solved, this will succeed
+% find . -type f -name 'pyproject.toml' -execdir poetry lock \;
+
+% Install all of the projects
+% find . -type f -name 'pyproject.toml' -execdir poetry install \;
+```
+
+`lock` and `install` are in two separate calls bcause when I tried `update`, things were installing strangely.
+
 
 ## To Do
 

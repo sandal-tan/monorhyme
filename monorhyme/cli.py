@@ -76,10 +76,10 @@ def _list(session: Session, package: T.Optional[str] = None):
 @click.pass_obj
 def _set(session: Session, dependency: str, version: str) -> None:
     """Set the version for a depdency in the monorepo."""
-    if not session.project_has(dependency):
+    if not session.project_has(dependency=dependency):
         raise CLIError(f"No project requires `{dependency}`")
     if version == "latest":
-        latest_version = session.get_latest_version(dependency)
+        latest_version = session.get_latest_version(dependency=dependency)
         click.echo(
             f"Using {color.Foreground.cyan(latest_version)} for {color.Foreground.green(dependency)}"
         )

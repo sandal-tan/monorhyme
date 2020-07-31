@@ -116,6 +116,10 @@ class PoetryProject:
             Whether or not the version was changed
 
         """
+
+        if dependency not in self._dependencies:
+            return False
+
         if self._dependencies[dependency].version is None:
             raise CLIError(
                 f"`Dependency `{dependency}` is not managed via a version constraint"

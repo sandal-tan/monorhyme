@@ -6,6 +6,7 @@ import typing as T
 import subprocess
 import sys
 from pprint import pformat
+from functools import wraps
 
 from logzero import logger
 
@@ -25,6 +26,24 @@ def in_git(here: str = os.path.join(os.path.abspath("."), ".")) -> T.Union[str, 
             return here
 
     return False
+
+
+BLACKLIST_DEPS: T.List[str] = ["python"]
+"""Depedencies that are not managed via pip or should otherwise be blacklisted."""
+
+
+def apply_blacklist(param_name):
+    def _decorate(func):
+        @wraps(func)
+        def _wrapper(*args, **kwargs):
+            _dep = kwargs.get(param_name)
+            if _dep in BLACKLIST_DEPS:
+                raise CLIError(f"Cannot manage `{_dep}`")
+            return func(*args, **kwargs)
+
+        return _wrapper
+
+    return _decorate
 
 
 @dataclass
@@ -48,6 +67,7 @@ class Session:
         else:
             raise CLIError("mr must be ran in a git repository")
 
+    @apply_blacklist("dependency")
     def get_latest_version(self, dependency: str) -> str:
         """Get the latest version, given a dependency.
 
@@ -68,8 +88,11 @@ class Session:
         latest_version = latest_version[latest_version.find("(from versions:") + 15 :]
         latest_version = latest_version[: latest_version.find(")")]
         latest_version = latest_version.replace(" ", "").split(",")[-1]
+        if latest_version == "none":
+            raise CLIError(f"Cannot find latest version for: {dependency}")
         return latest_version
 
+    @apply_blacklist("dependency")
     def set_version(
         self, dependency: str, version: str
     ) -> T.List[T.Tuple[str, str, str]]:
@@ -88,6 +111,7 @@ class Session:
 
         return packages
 
+    @apply_blacklist("dependency")
     def project_has(self, dependency: str) -> bool:
         """Check whether any project requires a dependency.
 

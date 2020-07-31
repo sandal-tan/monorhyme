@@ -1,0 +1,1 @@
+"""Get depdency version information."""

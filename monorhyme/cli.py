@@ -87,7 +87,10 @@ def _set(session: Session, dependency: str, version: str) -> None:
     updated_packages = session.set_version(version=version, dependency=dependency)
     if updated_packages:
         click.echo(
-            "\n".join(f"{path} ({old} -> {new})" for path, old, new in updated_packages)
+            "\n".join(
+                f"{color.Foreground.blue(path)} ({color.Foreground.red(old)} -> {color.Foreground.green(new)})"
+                for path, old, new in updated_packages
+            )
         )
         session.write()
     else:

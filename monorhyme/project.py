@@ -3,8 +3,9 @@
 from pprint import pformat
 from dataclasses import dataclass, field
 import typing as T
+from copy import copy
 
-import toml
+import tomlkit
 from logzero import logger
 
 from .exception import CLIError
@@ -50,6 +51,15 @@ class PoetryDependency:
     extras: T.List[str] = field(default_factory=list)
     optional: bool = False
 
+    def to_dict(self) -> T.Dict:
+        _dict = copy(self.__dict__)
+        logger.debug(_dict)
+        _dict.pop("name")
+        _dict.pop("development", False)
+        _dict["allow-prereleases"] = _dict.pop("allow_prereleases", False)
+        _dict = {k: v for k, v in _dict.items() if v}
+        return _dict
+
 
 @dataclass
 class PoetryProject:
@@ -66,7 +76,7 @@ class PoetryProject:
         if not self.project_path.endswith("/pyproject.toml"):
             self.project_path += "/pyproject.toml"
         with open(self.project_path) as project_fp:
-            self._raw_file = toml.load(project_fp)
+            self._raw_file = tomlkit.parse(project_fp.read())
         logger.debug(pformat(self._raw_file))
         self._dependencies = {}
         for name, items in self._raw_file["tool"]["poetry"]["dependencies"].items():
@@ -88,15 +98,8 @@ class PoetryProject:
 
     def write(self):
         """Write the `pyproject.toml` file. for the project."""
-        to_write = self._raw_file
-        to_write["tool"]["poetry"]["dev-dependencies"] = {
-            k: v.__dict__ for k, v in self._dependencies.items() if v.development
-        }
-        to_write["tool"]["poetry"]["dependencies"] = {
-            k: v.__dict__ for k, v in self._dependencies.items() if not v.development
-        }
         with open(self.project_path, "w") as project_fp:
-            toml.dump(to_write, project_fp)
+            project_fp.write(tomlkit.dumps(self._raw_file))
 
     def get_package(self, package: str) -> T.Optional[PoetryDependency]:
         """Get a package if it's defined in the project."""
@@ -117,7 +120,20 @@ class PoetryProject:
             raise CLIError(
                 f"`Dependency `{dependency}` is not managed via a version constraint"
             )
-        if version != self._dependencies[dependency].version:
-            self._dependencies[dependency].version = version
-            return True
+        _dep = self._dependencies[dependency]
+        if version != _dep.version:
+            _dep.version = version
+            section = "dependencies"
+            if _dep.development:
+                section = "dev-dependencies"
+
+            _old = self._raw_file["tool"]["poetry"][section][dependency]
+            if isinstance(_old, str):
+                self._raw_file["tool"]["poetry"][section][dependency] = version
+            else:
+                self._raw_file["tool"]["poetry"][section][dependency][
+                    "version"
+                ] = version
+                _old = _old["version"]
+            return _old
         return False

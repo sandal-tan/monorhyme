@@ -70,7 +70,9 @@ class Session:
         latest_version = latest_version.replace(" ", "").split(",")[-1]
         return latest_version
 
-    def set_version(self, dependency: str, version: str) -> T.List[str]:
+    def set_version(
+        self, dependency: str, version: str
+    ) -> T.List[T.Tuple[str, str, str]]:
         """Set the version for a y for all packages.
 
         Args:
@@ -80,9 +82,9 @@ class Session:
         """
         packages = []
         for _p in self.projects:
-            if _p.set_version(dependency=dependency, version=version):
+            if old_version := _p.set_version(dependency=dependency, version=version):
                 logger.debug(pformat(_p._dependencies))
-                packages.append(_p.project_path)
+                packages.append((_p.project_path, old_version, version))
 
         return packages
 
@@ -97,3 +99,8 @@ class Session:
 
         """
         return any(_p.get_package(dependency) for _p in self.projects)
+
+    def write(self):
+        """Writes all project files."""
+        for _p in self.projects:
+            _p.write()

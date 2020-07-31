@@ -74,7 +74,6 @@ def _list(session: Session, package: T.Optional[str] = None):
 @click.argument("dependency")
 @click.argument("version")
 @click.pass_obj
-@fail_clean
 def _set(session: Session, dependency: str, version: str) -> None:
     """Set the version for a depdency in the monorepo."""
     if not session.project_has(dependency):
@@ -87,6 +86,9 @@ def _set(session: Session, dependency: str, version: str) -> None:
         version = f"{DEFAULT_VERSION_CONSTRAINT}{latest_version}"
     updated_packages = session.set_version(version=version, dependency=dependency)
     if updated_packages:
-        click.echo("\n".join(updated_packages))
+        click.echo(
+            "\n".join(f"{path} ({old} -> {new})" for path, old, new in updated_packages)
+        )
+        session.write()
     else:
         click.echo("All projects are already up to date.")

@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pprint import pformat
 from functools import wraps
+import json
 
 from logzero import logger
 
@@ -78,19 +79,17 @@ class Session:
             The latest version
 
         """
-        latest_version = str(
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", f"{dependency}==dne"],
-                capture_output=True,
-                text=True,
-            )
+        p = subprocess.run(
+            ("curl", "-sL", f"https://pypi.org/pypi/{dependency}/json"),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
-        latest_version = latest_version[latest_version.find("(from versions:") + 15 :]
-        latest_version = latest_version[: latest_version.find(")")]
-        latest_version = latest_version.replace(" ", "").split(",")[-1]
-        if latest_version == "none":
-            raise CLIError(f"Cannot find latest version for: {dependency}")
-        return latest_version
+        try:
+            obj = json.loads(p.stdout)
+            return obj["info"]["version"]
+        except json.JSONDecodeError:
+            logger.warning("No version information found for: %s", dependency)
+            sys.exit(1)
 
     @apply_blacklist("dependency")
     def set_version(
